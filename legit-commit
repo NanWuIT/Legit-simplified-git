@@ -1,0 +1,217 @@
+#!/bin/dash
+# legit-commit
+# Nan Wu
+# 10/7/19
+#
+# subset0: legit-commit -m would save all filed in the index to a 
+# repository, also, a commit message will be required to save in the 
+# directory 
+#
+# subset1: legit-commit -a -m would copy all the files in 
+# the index from the current directory into the index directory firstly,
+# then copy the files in the index directory into the commit directory
+
+# first of all, check the command line input
+
+if [ $# -eq 2 ] && [ $1="-m" ]
+then
+	# then, check whether we have index directory
+	if [ -e ".legit/index" ]
+	then
+	# after that, check whether we have already have one directory before,
+	# if not, create one
+		i=0
+		while [ -e ".legit/commit/$i" ]
+		do
+			i=$(( $i+1 ))
+		done
+		# else, compare every file in the index with
+		# files in the last directory, if they are all the same, then
+		# echo "nothing to commit"
+		need=0
+		if [ $i -lt 1 ]
+		then
+			need=1
+		else
+			j=$(( $i-1 ))
+			
+			for file in .legit/index/*
+			do
+				fileName=$( echo $file | cut -d'/' -f3 )
+				# also, before we compare two files, make sure the file 
+				# in commit directory does exist
+				file1=$file
+				file2=".legit/commit/$j/$fileName"
+				if [ -e $file2 ]
+				then
+					# if the two files are the same, then nothing to do
+					if ! diff $file1 $file2 >/dev/null
+					then
+						need=1
+						break
+					else
+						:
+					fi
+				else
+					need=1
+					break
+				fi
+			done
+			# also, check whether files in two commit directories are the same
+			if [ $i -lt 2 ]
+			then
+				:	
+			else 
+				for compare in .legit/commit/$i/*
+				do 
+					compName=$( echo $compare | cut -d'/' -f4 )
+					if [ -e ".legit/commit/$j/$compName" ]
+					then
+						if ! diff $compare $compare2 >/dev/null
+						then
+							need=1
+							break
+						else
+							:
+						fi
+					else
+						need=1
+						break
+					fi
+				done
+			fi
+		fi
+
+		if [ $need -eq 0 ]
+		then
+			echo "nothing to commit"
+			exit 0
+
+		# now we can copy all the files in the index into commit directory
+
+		else
+			if [ -e ".legit/commit" ]
+			then
+				:
+			else
+				mkdir ".legit/commit"
+			fi
+			mkdir ".legit/commit/$i"
+			for target in .legit/index/*
+			do
+				targetName=$( echo $target | cut -d'/' -f3 )
+				cp $target ".legit/commit/$i/$targetName"
+			done
+			message=$2
+			touch ".legit/commit/$i/commitMessage.txt"
+			echo $message > ".legit/commit/$i/commitMessage.txt"
+			echo "Committed as commit $i"
+		fi
+	else
+		echo "legit-commit: error: .legit/index does not exist\n"
+		exit 1
+	fi
+
+# subset 1: legit-commit -a -m message
+# check the command line input is what we expected
+elif [ $# -eq 3 ] && [ $1="-a" ] && [ $2="-m" ]
+then
+# firstly, copy all the files in the current directory 
+# into index directory
+	# check we have .legit and .legit/index directory
+	if [ -e ".legit" ]
+	then
+		if [ -e ".legit/index" ]
+		then
+			continue
+		else
+			echo "legit-commit: error: .legit/index does not exist"
+		fi
+		# then, copy all the files in current directory that are already 
+		# exist in index directory into index directory
+		for file in .legit/index/*
+		do
+			#if [ -e $file ]
+			#then
+			name=$( echo "$file" | cut -d'/' -f3 )	#".legit/index/$file"
+			# making sure the file that we are going to copy does exist
+			if [ -e $name ]
+			then
+				cp $name $file
+			else
+				echo "legit-commit: error: can not copy 'non_existent_file'"
+			fi
+		done
+		# after all the files in the index are dealt with, 
+		# copy all the files in the index directory into commit directory
+		# as before, get the commit number that we want
+		i=0
+		while [ -e ".legit/commit/$i" ]
+		do
+			i=$(( $i+1 ))
+		done
+		# else, compare every file in the index with
+		# files in the last directory, if they are all the same, then
+		# echo "nothing to commit"
+		need=1
+		if [ $i -lt 1 ]
+		then
+			need=0
+		else
+			j=$(( $i-1 ))
+			
+			for file in .legit/index/*
+			do
+				fileName=$( echo $file | cut -d'/' -f3 )
+				# also, before we compare two files, make sure the file 
+				# in commit directory does exist
+				file1=$file
+				file2=".legit/commit/$j/$fileName"
+				if [ -e $file2 ]
+				then
+					if diff $file1 $file2 >/dev/null
+					then
+						:
+					else
+						need=0
+						break
+					fi
+				else
+					need=0
+					break
+				fi
+			done
+		fi
+
+		if [ $need -eq 1 ]
+		then
+			echo "nothing to commit"
+			exit 0
+
+		# now we can copy all the files in the index into commit directory
+
+		else
+			if [ -e ".legit/commit" ]
+			then
+				:
+			else
+				mkdir ".legit/commit"
+			fi
+			mkdir ".legit/commit/$i"
+			for target in .legit/index/*
+			do
+				targetName=$( echo $target | cut -d'/' -f3 )
+				cp $target ".legit/commit/$i/$targetName"
+			done
+			message=$3
+			touch ".legit/commit/$i/commitMessage.txt"
+			echo $message > ".legit/commit/$i/commitMessage.txt"
+			echo "Committed as commit $i"	
+		fi
+	else
+		echo "legit-commit: error: no .legit directory containing legit repository exists"
+	fi
+else
+	echo "Usage: legit-commit -m message\n "
+	exit 1
+fi

@@ -1,0 +1,43 @@
+#!/bin/dash
+# legit-show
+# Nan Wu
+# 12/7/19
+# legit-show would show the file that user asked on the command line
+
+# in the beginning, check whether the command line argument is what
+# we expected
+
+if [ $# -ne 1 ]
+then
+    echo "Usage: error: legit-show number:filename\n"
+    exit 1
+else
+    command=$*
+    number=$( echo "$command" | cut -d':' -f1 )
+    file=$( echo "$command" | cut -d':' -f2 )
+# show the file
+    if [ -z "$number" ]
+    then
+    # test whether file in index
+        if [ -e ".legit/index/$file" ]
+        then
+            cat ".legit/index/$file"
+        else
+            echo "legit-show: error: '$file' not found in index"
+        fi
+    else
+    # check whether commit directory exist
+        if [ -e ".legit/commit/$number" ]
+        then
+            # check whether file in commit file
+            if [ -e ".legit/commit/$number/$file" ]
+            then
+                cat ".legit/commit/$number/$file"
+            else
+                echo "legit-show: error: '$file' not found in commit $number"
+            fi
+        else
+            echo "legit-show: error: unknown commit '$number'"
+        fi
+    fi
+fi

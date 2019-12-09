@@ -1,0 +1,21 @@
+#!/bin/dash
+# legit-status
+# Nan Wu
+# 12/7/19
+# legit-status would show the status of files in the current directory
+# index and repository
+
+# check all the files in the current directory
+for file in *
+do
+# echo all the information of files
+    if [ -e ".legit/index/$file" ]
+    then
+        # current(Y) index(Y)
+        :
+    else
+        # current(Y) index(N), this means untracked
+        echo "$file - untracked"
+    fi
+
+done

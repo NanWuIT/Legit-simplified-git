@@ -1,0 +1,48 @@
+#!/bin/dash
+# legit-add
+# Nan Wu
+# 10/7/19
+# legit-add would add the index sub directory into the directory
+# under the legit directory in step one
+# in the step two, it would copy all the files in current directory
+# into the index directory
+
+
+# in the beginnig, checking the command line argument quantity
+if [ $# -lt 1 ]
+then
+	echo "Usage: legit-add filenames\n"
+else
+# check whether the directory exist firstly
+	if [ -e ".legit" ]
+	then
+		if [ -e ".legit/index" ]
+		then
+			continue
+		else
+			mkdir ".legit/index"
+		fi
+# step two, copy all the files in command line into index directory
+
+		for file in $@
+		do
+			if [ -e $file ]
+			then
+				name=".legit/index/$file"
+				cp $file $name
+			else
+			# when the file does not exist, need to check whether it 
+			# is exist in the index directory
+				if [ -e ".legit/index/$file" ]
+				then
+					touch ".legit/index/delete#$file"
+
+				else
+					echo "legit-add: error: can not open 'non_existent_file'"	
+				fi
+			fi
+		done
+	else
+		echo "legit-add: error: no .legit directory containing legit repository exists"
+	fi
+fi

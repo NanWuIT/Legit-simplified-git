@@ -1,0 +1,261 @@
+#!/bin/dash
+# legit-rm
+# Nan Wu
+# 12/7/19
+# legit-rm would remove the files that users indicated
+# When --cached was provided, then the indicated file
+# should only be removed from index directory, else, the 
+# file would be removed from both current and index
+# directory.
+# when --force was provided to remove the file even this 
+# action might lead to the losing file for user, so, this
+# action will not compare the file with file in index or
+# repository
+
+
+# check whether the command line input is correct
+if [ $# -ge 1 ]
+then
+    # check whether the "--forced" command is provided
+    #forced="--force"
+    #cached="--cached"
+    if [ $# -ge 2 ] && [ $1 = "--force" ]
+    then
+        # legit-rm --forced --cached filenames  ----------------------------------------
+        if [ $2 = "--cached" ]
+        then
+            for file in $@
+            do 
+                # making sure the file's name is not a command
+                if [ $file = "--force" ] || [ $file = "--cached" ]
+                then
+                    :
+                else
+                    # making sure the file does exist then delete it
+                    if [ -e ".legit/index/$file" ]
+                    then
+                        rm ".legit/index/$file"
+                    else
+                        echo "legit-rm: error: '$file' in index does not exist"
+                        exit 1
+                    fi
+                fi
+            done
+        # legit-rm --forced filenames  ------------------------------------------------
+        else
+            for file in $@
+            do
+                # making sure the file does exist then delete it
+                if [ $file = "--force" ]
+                then
+                    :
+                else
+                    if [ -e ".legit/index/$file" ]
+                    then
+                        rm ".legit/index/$file"
+                    else
+                        echo "legit-rm: error: '$file' is not in the legit repository"
+                        exit 1
+                    fi
+                    if [ -e $file ]
+                    then
+                        i=0
+                        exist=0
+                        while [ -e ".legit/commit/$i" ]
+                        do
+                            if [ -e ".legit/commit/$i/$file" ]
+                            then
+                                exist=1
+                                break
+                            else
+                                :
+                            fi
+                            $i=$( expr $i+1 )
+                        done
+                        if [ $exist -eq 0 ]
+                        then
+                            echo "legit-rm: error: '$file' is not in the legit repository"
+                            exit 0
+                        else
+                            rm $file
+                        fi
+                    else
+                        :
+                        #echo "legit-rm: error: '$file' does not exist"
+                        #exit 1
+                    fi
+                fi
+            done
+
+
+
+        fi
+    else
+
+        # legit-rm --cached filenames   ------------------------------------------------
+        if [ $# -ge 2 ] && [ $1 = "--cached" ]
+        then
+            # before we start the action, get the last repository
+            # set the value as max
+            max=0
+            for dir in .legit/commit/*
+            do
+                directory=$( echo "$dir" | cut -d'/' -f3 )
+                if [ -z $directory ]
+                then
+                    :
+                else
+                    i=$( echo $directory )
+                    if [ $i -gt $max ]
+                    then
+                        max=$i
+                    else
+                        :
+                    fi
+                fi
+            done
+            for file in $@
+            do 
+                if [ $file = "--cached" ]
+                then
+                    :
+                else
+                    if [ -e ".legit/index/$file" ]
+                    then
+                    # file exist: index(Y)
+                    # we have to compare the file that we are going to delete
+                    # is the same with file in current directory and repository
+                    # to make sure user would not lose their work
+                    # just making sure the file exist in the commit directory to avoid error
+                        if [ -e ".legit/commit/$max/$file" ]
+                        then
+                        # file exist: index(Y) commit(Y)
+                            if ! diff $file ".legit/index/$file" >/dev/null && ! diff ".legit/index/$file" ".legit/commit/$max/$file" >/dev/null
+                            then
+                            # when the file in index is different with both current file and repository
+                                echo "legit-rm: error: '$file' in index is different to both working file and repository"
+                                exit 0
+                #elif ! diff $file ".legit/index/$file" >/dev/null
+                #    echo "legit-rm: error: '$file' in index is different to working file"
+                #elif ! diff ".legit/index/$file" ".legit/commit/$max/$file" >/dev/null
+                #    echo "legit-rm: error: '$file' in index is different to repository"
+                            else
+                                rm ".legit/index/$file"
+                            fi
+                        else
+                        # file exist: index(Y) commit(N)
+                            if [ -e $file ]
+                            then
+                            # file exist: current(Y) index(Y) commit(N)
+                            rm ".legit/index/$file"
+                            else
+                            # file exist: current(N) index(Y) commit(N)
+                                echo "legit-rm: error: '$file' is not in the legit repository"
+                                exit 1
+                            #rm ".legit/index/$file"
+                            fi
+                        fi
+                    else
+                        echo "legit-rm: error: '$file' is not in the legit repository"
+                        exit 1
+                    fi  
+                fi
+            done
+            
+            
+
+        # legit-rm filenames -------------------------------------------------------------
+            else
+            # find the last commit directory path
+                max=0
+                if [ -e ".legit/commit/$max" ]
+                then
+                    for dir in .legit/commit/*
+                    do
+                        directory=$( echo "$dir" | cut -d'/' -f3 )
+                        if [ -z $directory ]
+                        then
+                            :
+                        else
+                            i=$( echo $directory )
+                            if [ $i -gt $max ]
+                            then
+                                max=$i
+                            else
+                                :
+                            fi
+                        fi
+                    done
+                else
+                    echo "legit-rm: error: it seems that you forget to have a repository at first"
+                    exit 1
+                fi
+                for file in $@
+                do 
+                    if [ -e $file ]
+                    then
+                        if [ -e ".legit/index/$file" ]
+                        then
+                            if [ -e ".legit/commit/$max/$file" ]
+                            then
+                                # the file is exist: current(Y) index(Y) and commit(Y)
+                                if ! diff ".legit/index/$file" ".legit/commit/$max/$file" >/dev/null
+                                then
+                                    # when the file in index is different with file in repository and current file
+                                    if ! diff ".legit/index/$file" $file >/dev/null 
+                                    then
+                                        echo "legit-rm: error: '$file' in index is different to both working file and repository"
+                                        exit 1
+                                    else
+                                        # when the file in index is different with file in repository
+                                        echo "legit-rm: error: 'c' has changes staged in the index"
+                                        exit 1
+                                    fi
+                                else
+                                    if ! diff ".legit/index/$file" $file >/dev/null
+                                    then
+                                        # when files in index is different with current file
+                                        echo "legit-rm: error: '$file' in repository is different to working file"
+                                        exit 1
+                                    else
+                                        rm $file
+                                        rm ".legit/index/$file"
+                                    fi
+                                fi
+                            else
+                                # the file is exist: current(Y) index(Y) and commit(N)
+                                echo "legit-rm: error: '$file' has changes staged in the index"
+                                exit 1
+                            fi
+                        else
+                            # the file is exist: current(Y) index(N) and commit(Y)
+                            if [ -e ".legit/commit/$max/$file" ]
+                            then
+                                if ! diff ".legit/commit/$max/$file" $file >/dev/null 
+                                then
+                                    # when the file in repository is different with current file
+                                    echo "legit-rm: error: 'a' in repository is different to working file"
+                                    exit 1
+                                else
+                                    # when the file in index is different with file in repository
+                                    rm $file
+                                fi
+                            else
+                                # the file is exist: current(Y) index(N) and commit(N)
+                                echo "legit-rm: error: '$file' is not in the legit repository"
+                                exit 1
+                            fi
+    
+    
+                    fi
+                else 
+                    echo "legit-rm: error: '$file' is not in current directory"
+                    exit 1
+                fi
+            done
+        fi
+    fi
+else
+    echo "Usage: legit-rm [--force] [--cached] filenames"
+    exit 1
+fi

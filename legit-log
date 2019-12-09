@@ -1,0 +1,39 @@
+#!/bin/dash
+# legit-log
+# Nan Wu
+# 12/7/19
+# legit-log would show all the commit directory number with 
+# the commit message that users gave
+max=0
+if [ -e ".legit/commit/$max" ]
+then
+    for dir in .legit/commit/*
+    do
+      directory=$( echo "$dir" | cut -d'/' -f3 )
+       if [ -z $directory ]
+       then
+           :
+        else
+# after catching all the directory that are commit directories,
+# could start to print all the messages that the user saved
+            log=$directory
+            i=$( echo $log )
+            if [ $i -gt $max ]
+            then
+                max=$i
+            else
+                :
+            fi
+        fi
+    done
+
+# print from the latest commit directory
+    while [ $max -ne -1 ]
+    do
+        echo -n "$max "
+        cat ".legit/commit/$max/commitMessage.txt"
+        max=$(( $max-1 ))
+    done
+else
+    echo "legit-log: error: where is your commit, huh?"
+fi
